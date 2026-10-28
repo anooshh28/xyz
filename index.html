@@ -23,16 +23,8 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
 
-        h1 {
-            font-size: 1.6rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .subtitle {
-            color: #6b7280;
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
-        }
+        h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+        .subtitle { color: #6b7280; font-size: 0.9rem; margin-bottom: 1.5rem; }
 
         form {
             display: grid;
@@ -41,13 +33,7 @@
             margin-bottom: 1.5rem;
         }
 
-        label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #374151;
-            display: block;
-            margin-bottom: 0.25rem;
-        }
+        label { font-size: 0.8rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.25rem; }
 
         input, select {
             width: 100%;
@@ -77,15 +63,43 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-
         button:hover { background: #1d4ed8; }
 
-        h2 {
-            font-size: 1.1rem;
-            margin: 1.5rem 0 0.75rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #e5e7eb;
+        /* Date filter bar */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
         }
+        .filter-bar label { margin: 0; font-size: 0.85rem; font-weight: 600; }
+        .filter-bar input[type="date"] { width: auto; }
+        .filter-bar .btn {
+            background: #eef2ff;
+            color: #4338ca;
+            border: none;
+            border-radius: 6px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .filter-bar .btn:hover { background: #e0e7ff; }
+        .filter-bar .clear {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: none;
+            border-radius: 6px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        h2 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb; }
 
         .entry {
             display: flex;
@@ -95,58 +109,42 @@
             border-bottom: 1px solid #f3f4f6;
             font-size: 0.95rem;
         }
-
         .entry .date { color: #6b7280; font-size: 0.8rem; }
         .entry .cat { background: #eef2ff; color: #4338ca; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem; }
         .entry .amount { font-weight: 600; }
-
-        .entry .delete {
-            background: none;
-            border: none;
-            color: #ef4444;
-            cursor: pointer;
-            font-size: 0.9rem;
-            padding: 0 0.25rem;
-        }
-
+        .entry .delete { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.9rem; padding: 0 0.25rem; }
         .entry .delete:hover { color: #b91c1c; }
 
-        .totals {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 0.75rem;
-        }
-
-        .total-card {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 0.75rem;
-            text-align: center;
-        }
-
+        .totals { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+        .total-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem; text-align: center; }
         .total-card .cat { font-size: 0.8rem; color: #6b7280; }
         .total-card .sum { font-size: 1.2rem; font-weight: 700; color: #111827; }
 
-        .empty {
-            color: #9ca3af;
-            text-align: center;
-            padding: 1.5rem 0;
-            font-size: 0.9rem;
-        }
+        .empty { color: #9ca3af; text-align: center; padding: 1.5rem 0; font-size: 0.9rem; }
 
-        .grand {
-            margin-top: 1rem;
-            text-align: right;
-            font-size: 1.1rem;
-            font-weight: 700;
+        .grand { margin-top: 1rem; text-align: right; font-size: 1.1rem; font-weight: 700; }
+
+        /* Daily summary cards */
+        .daily-summary { margin-top: 0.5rem; }
+        .day-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .day-card .day { font-weight: 600; color: #111827; }
+        .day-card .count { color: #6b7280; font-size: 0.85rem; }
+        .day-card .sum { font-weight: 700; color: #2563eb; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>💸 Expense Tracker</h1>
-        <p class="subtitle">Add an expense for a day, then see totals by category.</p>
+        <p class="subtitle">Add expenses day by day, then see totals per day and overall.</p>
 
         <form id="expense-form">
             <div>
@@ -172,8 +170,19 @@
             <button type="submit">Add Expense</button>
         </form>
 
-        <h2>Entries</h2>
+        <!-- Date filter -->
+        <div class="filter-bar">
+            <label for="filter-date">View day:</label>
+            <input type="date" id="filter-date">
+            <button type="button" class="btn" id="today-btn">Today</button>
+            <button type="button" class="clear" id="clear-filter">Show all</button>
+        </div>
+
+        <h2 id="entries-title">Entries</h2>
         <div id="entries"></div>
+
+        <h2>Daily Summary</h2>
+        <div id="daily-summary" class="daily-summary"></div>
 
         <h2>Totals by Category</h2>
         <div id="totals" class="totals"></div>
@@ -181,22 +190,46 @@
     </div>
 
     <script>
-        // Load saved expenses from localStorage, or start fresh
         let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        let filterDate = '';   // '' = show all
 
-        // ---- Render all entries ----
+        // Helper: today's date as YYYY-MM-DD
+        function todayString() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        // Set today's date in the add form by default
+        document.getElementById('date').value = todayString();
+
+        // ---- Filtered list ----
+        function filtered() {
+            if (!filterDate) return expenses;
+            return expenses.filter(e => e.date === filterDate);
+        }
+
+        // ---- Render entries ----
         function renderEntries() {
             const container = document.getElementById('entries');
+            const title = document.getElementById('entries-title');
+            const list = filtered();
 
-            if (expenses.length === 0) {
-                container.innerHTML = '<p class="empty">No expenses yet. Add your first one above!</p>';
+            if (filterDate) {
+                title.textContent = `Entries for ${filterDate}`;
+            } else {
+                title.textContent = 'Entries';
+            }
+
+            if (list.length === 0) {
+                container.innerHTML = '<p class="empty">No expenses here yet.</p>';
                 return;
             }
 
-            // Sort by date (newest first)
-            const sorted = [...expenses].sort((a, b) => b.date.localeCompare(a.date));
-
-            container.innerHTML = sorted.map((e, i) => `
+            const sorted = [...list].sort((a, b) => b.date.localeCompare(a.date));
+            container.innerHTML = sorted.map(e => `
                 <div class="entry">
                     <span class="date">${e.date}</span>
                     <span class="cat">${e.category}</span>
@@ -206,16 +239,43 @@
             `).join('');
         }
 
-        // ---- Render totals by category (your total_by_category method!) ----
+        // ---- Daily summary (how much each day cost) ----
+        function renderDaily() {
+            const container = document.getElementById('daily-summary');
+
+            // Group by date
+            const byDay = {};
+            for (const e of expenses) {
+                byDay[e.date] = byDay[e.date] || { total: 0, count: 0 };
+                byDay[e.date].total += e.amount;
+                byDay[e.date].count += 1;
+            }
+
+            const days = Object.keys(byDay).sort().reverse(); // newest first
+
+            if (days.length === 0) {
+                container.innerHTML = '<p class="empty">No days recorded yet.</p>';
+                return;
+            }
+
+            container.innerHTML = days.map(date => `
+                <div class="day-card">
+                    <span class="day">${date}</span>
+                    <span class="count">${byDay[date].count} expense(s)</span>
+                    <span class="sum">₹${byDay[date].total.toFixed(2)}</span>
+                </div>
+            `).join('');
+        }
+
+        // ---- Totals by category (for the filtered view) ----
         function renderTotals() {
             const container = document.getElementById('totals');
             const grandEl = document.getElementById('grand');
+            const list = filtered();
 
-            // Same logic as your Python: totals[cat] += amount
             const totals = {};
             let grandTotal = 0;
-
-            for (const e of expenses) {
+            for (const e of list) {
                 totals[e.category] = (totals[e.category] || 0) + e.amount;
                 grandTotal += e.amount;
             }
@@ -234,40 +294,32 @@
                 </div>
             `).join('');
 
-            grandEl.textContent = `Grand Total: ₹${grandTotal.toFixed(2)}`;
+            const label = filterDate ? `Total for ${filterDate}` : 'Grand Total (all days)';
+            grandEl.textContent = `${label}: ₹${grandTotal.toFixed(2)}`;
         }
 
-        // ---- Save to localStorage and refresh ----
+        // ---- Save + render ----
         function saveAndRender() {
             localStorage.setItem('expenses', JSON.stringify(expenses));
             renderEntries();
+            renderDaily();
             renderTotals();
         }
 
-        // ---- Handle form submit ----
+        // ---- Add expense ----
         document.getElementById('expense-form').addEventListener('submit', (e) => {
             e.preventDefault();
-
             const date = document.getElementById('date').value;
             const category = document.getElementById('category').value;
             const amount = parseFloat(document.getElementById('amount').value);
-
             if (!date || !category || isNaN(amount) || amount < 0) return;
 
-            expenses.push({
-                id: Date.now(),           // unique id for each entry
-                date: date,
-                category: category,
-                amount: amount
-            });
-
+            expenses.push({ id: Date.now(), date, category, amount });
             saveAndRender();
-
-            // Reset amount field for quick entry
             document.getElementById('amount').value = '';
         });
 
-        // ---- Handle delete ----
+        // ---- Delete ----
         document.getElementById('entries').addEventListener('click', (e) => {
             if (e.target.classList.contains('delete')) {
                 const id = Number(e.target.dataset.id);
@@ -276,7 +328,48 @@
             }
         });
 
+        // ---- Filter controls ----
+        document.getElementById('filter-date').addEventListener('change', (e) => {
+            filterDate = e.target.value;
+            saveAndRender();
+        });
+        document.getElementById('today-btn').addEventListener('click', () => {
+            filterDate = todayString();
+            document.getElementById('filter-date').value = filterDate;
+            saveAndRender();
+        });
+        document.getElementById('clear-filter').addEventListener('click', () => {
+            filterDate = '';
+            document.getElementById('filter-date').value = '';
+            saveAndRender();
+        });
+
         // ---- Initial render ----
+        renderEntries();
+        renderDaily();
+        renderTotals();
+    </script>
+</body>
+</html>
+
+           
+       
+            
+
+       
+        
+         
+                   
+       
+
+   
+
+            
+                  
+            
+            
+
+           
         renderEntries();
         renderTotals();
     </script>
