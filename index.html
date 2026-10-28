@@ -65,7 +65,6 @@
         }
         button:hover { background: #1d4ed8; }
 
-        /* Date filter bar */
         .filter-bar {
             display: flex;
             align-items: center;
@@ -124,7 +123,6 @@
 
         .grand { margin-top: 1rem; text-align: right; font-size: 1.1rem; font-weight: 700; }
 
-        /* Daily summary cards */
         .daily-summary { margin-top: 0.5rem; }
         .day-card {
             background: #fff;
@@ -144,7 +142,7 @@
 <body>
     <div class="container">
         <h1>💸 Expense Tracker</h1>
-        <p class="subtitle">Add expenses day by day, then see totals per day and overall.</p>
+        <p class="subtitle">Add expenses day by day, then see totals per day, per month, and overall.</p>
 
         <form id="expense-form">
             <div>
@@ -170,7 +168,6 @@
             <button type="submit">Add Expense</button>
         </form>
 
-        <!-- Date filter -->
         <div class="filter-bar">
             <label for="filter-date">View day:</label>
             <input type="date" id="filter-date">
@@ -184,6 +181,9 @@
         <h2>Daily Summary</h2>
         <div id="daily-summary" class="daily-summary"></div>
 
+        <h2>Monthly Summary</h2>
+        <div id="monthly-summary" class="daily-summary"></div>
+
         <h2>Totals by Category</h2>
         <div id="totals" class="totals"></div>
         <div id="grand" class="grand"></div>
@@ -191,9 +191,8 @@
 
     <script>
         let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-        let filterDate = '';   // '' = show all
+        let filterDate = '';
 
-        // Helper: today's date as YYYY-MM-DD
         function todayString() {
             const d = new Date();
             const y = d.getFullYear();
@@ -202,16 +201,13 @@
             return `${y}-${m}-${day}`;
         }
 
-        // Set today's date in the add form by default
         document.getElementById('date').value = todayString();
 
-        // ---- Filtered list ----
         function filtered() {
             if (!filterDate) return expenses;
             return expenses.filter(e => e.date === filterDate);
         }
 
-        // ---- Render entries ----
         function renderEntries() {
             const container = document.getElementById('entries');
             const title = document.getElementById('entries-title');
@@ -239,11 +235,8 @@
             `).join('');
         }
 
-        // ---- Daily summary (how much each day cost) ----
         function renderDaily() {
             const container = document.getElementById('daily-summary');
-
-            // Group by date
             const byDay = {};
             for (const e of expenses) {
                 byDay[e.date] = byDay[e.date] || { total: 0, count: 0 };
@@ -251,7 +244,7 @@
                 byDay[e.date].count += 1;
             }
 
-            const days = Object.keys(byDay).sort().reverse(); // newest first
+            const days = Object.keys(byDay).sort().reverse();
 
             if (days.length === 0) {
                 container.innerHTML = '<p class="empty">No days recorded yet.</p>';
@@ -267,7 +260,31 @@
             `).join('');
         }
 
-        // ---- Totals by category (for the filtered view) ----
+        // Monthly summary — how much you spent each month
+        function renderMonthly() {
+            const container = document.getElementById('monthly-summary');
+            const monthTotals = {};
+            for (const e of expenses) {
+                const month = e.date.slice(0, 7); // "2026-10"
+                monthTotals[month] = (monthTotals[month] || 0) + e.amount;
+            }
+
+            const months = Object.keys(monthTotals).sort().reverse();
+
+            if (months.length === 0) {
+                container.innerHTML = '<p class="empty">No months recorded yet.</p>';
+                return;
+            }
+
+            container.innerHTML = months.map(m => `
+                <div class="day-card">
+                    <span class="day">${m}</span>
+                    <span class="count">${expenses.filter(e => e.date.slice(0,7) === m).length} expense(s)</span>
+                    <span class="sum">₹${monthTotals[m].toFixed(2)}</span>
+                </div>
+            `).join('');
+        }
+
         function renderTotals() {
             const container = document.getElementById('totals');
             const grandEl = document.getElementById('grand');
@@ -298,15 +315,14 @@
             grandEl.textContent = `${label}: ₹${grandTotal.toFixed(2)}`;
         }
 
-        // ---- Save + render ----
         function saveAndRender() {
             localStorage.setItem('expenses', JSON.stringify(expenses));
             renderEntries();
             renderDaily();
+            renderMonthly();
             renderTotals();
         }
 
-        // ---- Add expense ----
         document.getElementById('expense-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const date = document.getElementById('date').value;
@@ -319,7 +335,6 @@
             document.getElementById('amount').value = '';
         });
 
-        // ---- Delete ----
         document.getElementById('entries').addEventListener('click', (e) => {
             if (e.target.classList.contains('delete')) {
                 const id = Number(e.target.dataset.id);
@@ -328,7 +343,6 @@
             }
         });
 
-        // ---- Filter controls ----
         document.getElementById('filter-date').addEventListener('change', (e) => {
             filterDate = e.target.value;
             saveAndRender();
@@ -344,17 +358,23 @@
             saveAndRender();
         });
 
-        // ---- Initial render ----
         renderEntries();
         renderDaily();
+        renderMonthly();
         renderTotals();
     </script>
 </body>
 </html>
 
+          
            
        
-            
+     
+          
+          
+           
+        
+        
 
        
         
