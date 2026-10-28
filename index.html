@@ -161,6 +161,10 @@
                     <option value="Other">Other</option>
                 </select>
             </div>
+            <div class="full" id="custom-cat-wrap" style="display:none;">
+                <label for="custom-cat">Custom category</label>
+                <input type="text" id="custom-cat" placeholder="e.g. Medical, Gifts, Rent">
+            </div>
             <div class="full">
                 <label for="amount">Amount (₹)</label>
                 <input type="number" id="amount" step="0.01" min="0" placeholder="0.00" required>
@@ -203,6 +207,15 @@
 
         document.getElementById('date').value = todayString();
 
+        // Show the custom category box only when "Other" is picked
+        const catSelect = document.getElementById('category');
+        const customWrap = document.getElementById('custom-cat-wrap');
+        const customInput = document.getElementById('custom-cat');
+
+        catSelect.addEventListener('change', () => {
+            customWrap.style.display = catSelect.value === 'Other' ? 'block' : 'none';
+        });
+
         function filtered() {
             if (!filterDate) return expenses;
             return expenses.filter(e => e.date === filterDate);
@@ -213,11 +226,7 @@
             const title = document.getElementById('entries-title');
             const list = filtered();
 
-            if (filterDate) {
-                title.textContent = `Entries for ${filterDate}`;
-            } else {
-                title.textContent = 'Entries';
-            }
+            title.textContent = filterDate ? `Entries for ${filterDate}` : 'Entries';
 
             if (list.length === 0) {
                 container.innerHTML = '<p class="empty">No expenses here yet.</p>';
@@ -260,13 +269,14 @@
             `).join('');
         }
 
-        // Monthly summary — how much you spent each month
         function renderMonthly() {
             const container = document.getElementById('monthly-summary');
             const monthTotals = {};
+            const monthCounts = {};
             for (const e of expenses) {
-                const month = e.date.slice(0, 7); // "2026-10"
+                const month = e.date.slice(0, 7);
                 monthTotals[month] = (monthTotals[month] || 0) + e.amount;
+                monthCounts[month] = (monthCounts[month] || 0) + 1;
             }
 
             const months = Object.keys(monthTotals).sort().reverse();
@@ -279,7 +289,7 @@
             container.innerHTML = months.map(m => `
                 <div class="day-card">
                     <span class="day">${m}</span>
-                    <span class="count">${expenses.filter(e => e.date.slice(0,7) === m).length} expense(s)</span>
+                    <span class="count">${monthCounts[m]} expense(s)</span>
                     <span class="sum">₹${monthTotals[m].toFixed(2)}</span>
                 </div>
             `).join('');
@@ -326,13 +336,22 @@
         document.getElementById('expense-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const date = document.getElementById('date').value;
-            const category = document.getElementById('category').value;
+            let category = catSelect.value;
             const amount = parseFloat(document.getElementById('amount').value);
+
+            if (category === 'Other') {
+                category = customInput.value.trim() || 'Other';
+            }
+
             if (!date || !category || isNaN(amount) || amount < 0) return;
 
             expenses.push({ id: Date.now(), date, category, amount });
             saveAndRender();
+
             document.getElementById('amount').value = '';
+            customInput.value = '';
+            customWrap.style.display = 'none';
+            catSelect.value = '';
         });
 
         document.getElementById('entries').addEventListener('click', (e) => {
@@ -366,7 +385,27 @@
 </body>
 </html>
 
+            
+            
+           
           
+            
+           
+       
+      
+                  
+      
+        
+   
+            
+        
+
+        
+        
+           
+           
+           
+       
            
        
      
