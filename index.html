@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Expense Tracker — Daily & Monthly Summary</title>
+<title>Personal Expenditure Tracking and Management</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     * { box-sizing: border-box; }
     body {
@@ -14,7 +15,7 @@
         color: #1f2937;
     }
     .container {
-        max-width: 720px;
+        max-width: 860px;
         margin: 0 auto;
         background: #fff;
         border-radius: 12px;
@@ -157,12 +158,43 @@
     .empty { color: #9ca3af; font-size: 0.88rem; font-style: italic; }
     .under { color: #16a34a; }
     .over { color: #dc2626; }
+
+    /* 50-30-20 rule */
+    .rule-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.7rem 0.9rem;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        font-size: 0.88rem;
+    }
+    .rule-row .name { font-weight: 600; width: 110px; flex-shrink: 0; }
+    .rule-row .bar-wrap {
+        flex: 1;
+        background: #e5e7eb;
+        border-radius: 99px;
+        height: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+    .rule-row .bar { height: 100%; border-radius: 99px; }
+    .rule-row .pct { width: 130px; text-align: right; flex-shrink: 0; }
+    .chart-wrap {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 0.5rem;
+    }
 </style>
 </head>
 <body>
 <div class="container">
-    <h1>💸 Expense Tracker</h1>
-    <p class="subtitle">Add expenses day by day, then see totals per day, per month, and overall.</p>
+    <h1>💸 Personal Expenditure Tracking and Management</h1>
+    <p class="subtitle">Log what you spend, sort it into categories, and see where your money goes — daily, monthly, and overall.</p>
 
     <form id="expense-form">
         <div class="row">
@@ -174,19 +206,35 @@
                 <label for="category">Category</label>
                 <select id="category" required>
                     <option value="">Select...</option>
-                    <option value="Food">Food</option>
-                    <option value="Transport">Transport</option>
-                    <option value="Entertainment">Entertainment</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Bills">Bills</option>
-                    <option value="Other">Other</option>
+                    <optgroup label="Needs">
+                        <option value="Food">Food</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Bills">Bills</option>
+                        <option value="Electricity">Electricity</option>
+                        <option value="Water">Water</option>
+                        <option value="Internet">Internet</option>
+                        <option value="Mobile">Mobile</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Medical">Medical</option>
+                        <option value="Education">Education</option>
+                    </optgroup>
+                    <optgroup label="Wants">
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Dining Out">Dining Out</option>
+                        <option value="Travel">Travel</option>
+                        <option value="Gifts">Gifts</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                        <option value="Other">Other (custom)</option>
+                    </optgroup>
                 </select>
             </div>
         </div>
 
         <div id="custom-cat-wrap" style="display:none; margin-top:0.75rem;">
             <label for="custom-cat">Custom category name</label>
-            <input type="text" id="custom-cat" placeholder="e.g. Medical, Gifts, Rent">
+            <input type="text" id="custom-cat" placeholder="e.g. Subscriptions, Repairs">
         </div>
 
         <div class="row" style="margin-top:0.75rem;">
@@ -222,9 +270,25 @@
     <h2>Savings</h2>
     <div id="savings"></div>
 
-    <h2>Totals by Category</h2>
+    <h2>50-30-20 Rule</h2>
+    <p class="subtitle" style="margin:0 0 0.75rem;">
+        Target: 50% needs · 30% wants · 20% savings. Compared against your monthly income.
+    </p>
+    <div id="rule"></div>
+
+    <h2>Spending by Category</h2>
     <div id="totals" class="cards"></div>
     <div class="grand" id="grand"></div>
+
+    <h2>Category Chart</h2>
+    <div class="chart-wrap">
+        <canvas id="catChart" height="140"></canvas>
+    </div>
+
+    <h2>Monthly Trend</h2>
+    <div class="chart-wrap">
+        <canvas id="monthChart" height="140"></canvas>
+    </div>
 
     <button type="button" class="btn btn-secondary" id="btn-export" style="margin-top:1.5rem;">
         ⬇ Export to CSV
@@ -236,6 +300,12 @@
 let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
 let income = parseFloat(localStorage.getItem('income')) || 0;
 let filterDate = '';
+let catChart = null;
+let monthChart = null;
+
+// needs/wants mapping for the 50-30-20 rule
+const NEEDS = ['Food','Transport','Bills','Electricity','Water','Internet','Mobile','Rent','Medical','Education'];
+const WANTS = ['Entertainment','Shopping','Dining Out','Travel','Gifts'];
 
 // ---------- helpers ----------
 function todayString() {
@@ -252,6 +322,15 @@ function save() {
 function filtered() {
     if (!filterDate) return expenses;
     return expenses.filter(e => e.date === filterDate);
+}
+
+function monthTotals() {
+    const byMonth = {};
+    expenses.forEach(e => {
+        const m = e.date.slice(0, 7);
+        byMonth[m] = (byMonth[m] || 0) + e.amount;
+    });
+    return byMonth;
 }
 
 // ---------- render ----------
@@ -346,12 +425,7 @@ function renderSavings() {
         return;
     }
 
-    const byMonth = {};
-    expenses.forEach(e => {
-        const m = e.date.slice(0, 7);
-        byMonth[m] = (byMonth[m] || 0) + e.amount;
-    });
-
+    const byMonth = monthTotals();
     const months = Object.keys(byMonth).sort().reverse();
     if (!months.length) {
         el.innerHTML = '<p class="empty">No expenses yet.</p>';
@@ -373,6 +447,72 @@ function renderSavings() {
             </strong>
         `;
         el.appendChild(row);
+    });
+}
+
+function renderRule() {
+    const el = document.getElementById('rule');
+    el.innerHTML = '';
+
+    if (!income) {
+        el.innerHTML = '<p class="empty">Enter your monthly income to see the 50-30-20 breakdown.</p>';
+        return;
+    }
+
+    const byMonth = {};
+    expenses.forEach(e => {
+        const m = e.date.slice(0, 7);
+        byMonth[m] = byMonth[m] || { needs: 0, wants: 0 };
+        if (NEEDS.includes(e.category)) byMonth[m].needs += e.amount;
+        else if (WANTS.includes(e.category)) byMonth[m].wants += e.amount;
+        else byMonth[m].wants += e.amount; // custom categories count as wants
+    });
+
+    const months = Object.keys(byMonth).sort().reverse();
+    if (!months.length) {
+        el.innerHTML = '<p class="empty">No expenses yet.</p>';
+        return;
+    }
+
+    months.forEach(m => {
+        const needs = byMonth[m].needs;
+        const wants = byMonth[m].wants;
+        const spent = needs + wants;
+        const saved = income - spent;
+
+        const needsPct = (needs / income) * 100;
+        const wantsPct = (wants / income) * 100;
+        const savedPct = (saved / income) * 100;
+
+        const wrap = document.createElement('div');
+        wrap.style.marginBottom = '1rem';
+        wrap.innerHTML = `<div style="font-weight:600; font-size:0.85rem; margin-bottom:0.4rem;">${m}</div>`;
+
+        const rows = [
+            { name: 'Needs',  pct: needsPct, target: 50, amount: needs, color: '#2563eb' },
+            { name: 'Wants',  pct: wantsPct, target: 30, amount: wants, color: '#f59e0b' },
+            { name: 'Savings', pct: savedPct, target: 20, amount: saved, color: '#16a34a' }
+        ];
+
+        rows.forEach(r => {
+            const barPct = Math.min(Math.max(r.pct, 0), 100);
+            const ok = r.name === 'Savings' ? r.pct >= r.target : r.pct <= r.target;
+            const row = document.createElement('div');
+            row.className = 'rule-row';
+            row.innerHTML = `
+                <span class="name">${r.name}</span>
+                <span class="bar-wrap">
+                    <span class="bar" style="width:${barPct}%; background:${r.color};"></span>
+                </span>
+                <span class="pct ${ok ? 'under' : 'over'}">
+                    ₹${r.amount.toFixed(0)} · ${r.pct.toFixed(1)}%
+                    <br><small>target ${r.target}%</small>
+                </span>
+            `;
+            wrap.appendChild(row);
+        });
+
+        el.appendChild(wrap);
     });
 }
 
@@ -407,13 +547,72 @@ function renderTotals() {
         `Grand Total (all days): ₹${grand.toFixed(2)}`;
 }
 
+function renderCharts() {
+    // --- category bar chart ---
+    const totals = {};
+    expenses.forEach(e => {
+        totals[e.category] = (totals[e.category] || 0) + e.amount;
+    });
+    const cats = Object.keys(totals).sort();
+    const catValues = cats.map(c => totals[c]);
+
+    if (catChart) catChart.destroy();
+    catChart = new Chart(document.getElementById('catChart'), {
+        type: 'bar',
+        data: {
+            labels: cats.length ? cats : ['No data'],
+            datasets: [{
+                label: 'Amount (₹)',
+                data: cats.length ? catValues : [0],
+                backgroundColor: '#2563eb',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: v => '₹' + v } }
+            }
+        }
+    });
+
+    // --- monthly trend chart (last 6 months) ---
+    const byMonth = monthTotals();
+    const months = Object.keys(byMonth).sort().slice(-6);
+    const monthValues = months.map(m => byMonth[m]);
+
+    if (monthChart) monthChart.destroy();
+    monthChart = new Chart(document.getElementById('monthChart'), {
+        type: 'bar',
+        data: {
+            labels: months.length ? months : ['No data'],
+            datasets: [{
+                label: 'Monthly spend (₹)',
+                data: months.length ? monthValues : [0],
+                backgroundColor: '#f59e0b',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: v => '₹' + v } }
+            }
+        }
+    });
+}
+
 function saveAndRender() {
     save();
     renderEntries();
     renderDaily();
     renderMonthly();
     renderSavings();
+    renderRule();
     renderTotals();
+    renderCharts();
 }
 
 // ---------- events ----------
@@ -448,7 +647,6 @@ document.getElementById('expense-form').addEventListener('submit', (e) => {
 
     saveAndRender();
 
-    // reset form
     document.getElementById('amount').value = '';
     document.getElementById('category').value = '';
     document.getElementById('custom-cat').value = '';
@@ -486,6 +684,7 @@ document.getElementById('income').addEventListener('input', (e) => {
     income = parseFloat(e.target.value) || 0;
     localStorage.setItem('income', income);
     renderSavings();
+    renderRule();
 });
 
 document.getElementById('btn-export').addEventListener('click', () => {
