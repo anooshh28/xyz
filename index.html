@@ -189,6 +189,61 @@
         padding: 1rem;
         margin-top: 0.5rem;
     }
+
+    /* ---------- BUDGET ---------- */
+    .budget-row {
+        padding: 0.85rem 1rem;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 0.6rem;
+        font-size: 0.88rem;
+    }
+    .budget-row.exceeded {
+        border-left: 5px solid #dc2626;
+        background: #fef2f2;
+    }
+    .budget-row.ok {
+        border-left: 5px solid #16a34a;
+    }
+    .budget-top {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    .budget-top .m { font-weight: 600; }
+    .budget-top .nums { margin-left: auto; color: #6b7280; }
+    .budget-top .nums b { color: #1f2937; }
+    .budget-bar-wrap {
+        position: relative;
+        background: #e5e7eb;
+        border-radius: 99px;
+        height: 14px;
+        overflow: hidden;
+    }
+    .budget-bar {
+        height: 100%;
+        border-radius: 99px;
+        background: #16a34a;
+        transition: width 0.3s;
+    }
+    .budget-bar.warn { background: #f59e0b; }
+    .budget-bar.danger { background: #dc2626; }
+    .budget-line {
+        position: absolute;
+        top: -2px;
+        bottom: -2px;
+        width: 3px;
+        background: #dc2626;
+    }
+    .budget-msg {
+        margin-top: 0.45rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+    .budget-msg.danger { color: #dc2626; }
+    .budget-msg.ok { color: #16a34a; }
 </style>
 </head>
 <body>
@@ -246,6 +301,10 @@
                 <label for="income">Monthly income (₹)</label>
                 <input type="number" id="income" step="0.01" min="0" placeholder="e.g. 15000">
             </div>
+            <div class="field">
+                <label for="budget">Monthly budget (₹)</label>
+                <input type="number" id="budget" step="0.01" min="0" placeholder="e.g. 10000">
+            </div>
         </div>
 
         <button type="submit" class="btn">Add Expense</button>
@@ -266,6 +325,9 @@
 
     <h2>Monthly Summary</h2>
     <div id="monthly"></div>
+
+    <h2>Budget</h2>
+    <div id="budget-view"></div>
 
     <h2>Savings</h2>
     <div id="savings"></div>
@@ -299,11 +361,11 @@
 // ---------- state ----------
 let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
 let income = parseFloat(localStorage.getItem('income')) || 0;
+let budget = parseFloat(localStorage.getItem('budget')) || 0;
 let filterDate = '';
 let catChart = null;
 let monthChart = null;
 
-// needs/wants mapping for the 50-30-20 rule
 const NEEDS = ['Food','Transport','Bills','Electricity','Water','Internet','Mobile','Rent','Medical','Education'];
 const WANTS = ['Entertainment','Shopping','Dining Out','Travel','Gifts'];
 
@@ -416,6 +478,60 @@ function renderMonthly() {
     });
 }
 
+// ---------- BUDGET ----------
+function renderBudget() {
+    const el = document.getElementById('budget-view');
+    el.innerHTML = '';
+
+    if (!budget) {
+        el.innerHTML = '<p class="empty">Enter a monthly budget above to track it.</p>';
+        return;
+    }
+
+    const byMonth = monthTotals();
+    const months = Object.keys(byMonth).sort().reverse();
+
+    if (!months.length) {
+        el.innerHTML = '<p class="empty">No expenses yet.</p>';
+        return;
+    }
+
+    months.forEach(m => {
+        const spent = byMonth[m];
+        const used = (spent / budget) * 100;
+        const left = budget - spent;
+        const exceeded = spent > budget;
+
+        // bar width: cap at 100%, but if exceeded show full red bar
+        const barPct = Math.min(used, 100);
+        let barClass = 'budget-bar';
+        if (exceeded) barClass += ' danger';
+        else if (used >= 80) barClass += ' warn';
+
+        const row = document.createElement('div');
+        row.className = 'budget-row ' + (exceeded ? 'exceeded' : 'ok');
+
+        row.innerHTML = `
+            <div class="budget-top">
+                <span class="m">${m}</span>
+                <span class="nums">
+                    Spent <b>₹${spent.toFixed(2)}</b> of ₹${budget.toFixed(2)}
+                </span>
+            </div>
+            <div class="budget-bar-wrap">
+                <div class="${barClass}" style="width:${barPct}%;"></div>
+                ${exceeded ? '<div class="budget-line" style="right:0;"></div>' : ''}
+            </div>
+            <div class="budget-msg ${exceeded ? 'danger' : 'ok'}">
+                ${exceeded
+                    ? `⚠ Budget exceeded by ₹${Math.abs(left).toFixed(2)} (${used.toFixed(1)}% used)`
+                    : `✔ ₹${left.toFixed(2)} left (${used.toFixed(1)}% used)`}
+            </div>
+        `;
+        el.appendChild(row);
+    });
+}
+
 function renderSavings() {
     const el = document.getElementById('savings');
     el.innerHTML = '';
@@ -464,8 +580,7 @@ function renderRule() {
         const m = e.date.slice(0, 7);
         byMonth[m] = byMonth[m] || { needs: 0, wants: 0 };
         if (NEEDS.includes(e.category)) byMonth[m].needs += e.amount;
-        else if (WANTS.includes(e.category)) byMonth[m].wants += e.amount;
-        else byMonth[m].wants += e.amount; // custom categories count as wants
+        else byMonth[m].wants += e.amount;
     });
 
     const months = Object.keys(byMonth).sort().reverse();
@@ -489,9 +604,9 @@ function renderRule() {
         wrap.innerHTML = `<div style="font-weight:600; font-size:0.85rem; margin-bottom:0.4rem;">${m}</div>`;
 
         const rows = [
-            { name: 'Needs',  pct: needsPct, target: 50, amount: needs, color: '#2563eb' },
-            { name: 'Wants',  pct: wantsPct, target: 30, amount: wants, color: '#f59e0b' },
-            { name: 'Savings', pct: savedPct, target: 20, amount: saved, color: '#16a34a' }
+            { name: 'Needs',   pct: needsPct, target: 50, amount: needs,  color: '#2563eb' },
+            { name: 'Wants',   pct: wantsPct, target: 30, amount: wants,  color: '#f59e0b' },
+            { name: 'Savings', pct: savedPct, target: 20, amount: saved,  color: '#16a34a' }
         ];
 
         rows.forEach(r => {
@@ -548,7 +663,6 @@ function renderTotals() {
 }
 
 function renderCharts() {
-    // --- category bar chart ---
     const totals = {};
     expenses.forEach(e => {
         totals[e.category] = (totals[e.category] || 0) + e.amount;
@@ -571,13 +685,10 @@ function renderCharts() {
         options: {
             responsive: true,
             plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, ticks: { callback: v => '₹' + v } }
-            }
+            scales: { y: { beginAtZero: true, ticks: { callback: v => '₹' + v } } }
         }
     });
 
-    // --- monthly trend chart (last 6 months) ---
     const byMonth = monthTotals();
     const months = Object.keys(byMonth).sort().slice(-6);
     const monthValues = months.map(m => byMonth[m]);
@@ -590,16 +701,14 @@ function renderCharts() {
             datasets: [{
                 label: 'Monthly spend (₹)',
                 data: months.length ? monthValues : [0],
-                backgroundColor: '#f59e0b',
+                backgroundColor: months.map(m => (budget && byMonth[m] > budget) ? '#dc2626' : '#f59e0b'),
                 borderRadius: 4
             }]
         },
         options: {
             responsive: true,
             plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, ticks: { callback: v => '₹' + v } }
-            }
+            scales: { y: { beginAtZero: true, ticks: { callback: v => '₹' + v } } }
         }
     });
 }
@@ -609,6 +718,7 @@ function saveAndRender() {
     renderEntries();
     renderDaily();
     renderMonthly();
+    renderBudget();
     renderSavings();
     renderRule();
     renderTotals();
@@ -638,13 +748,7 @@ document.getElementById('expense-form').addEventListener('submit', (e) => {
 
     if (!date || !category || isNaN(amount) || amount <= 0) return;
 
-    expenses.push({
-        id: Date.now(),
-        date: date,
-        category: category,
-        amount: amount
-    });
-
+    expenses.push({ id: Date.now(), date: date, category: category, amount: amount });
     saveAndRender();
 
     document.getElementById('amount').value = '';
@@ -687,6 +791,13 @@ document.getElementById('income').addEventListener('input', (e) => {
     renderRule();
 });
 
+document.getElementById('budget').addEventListener('input', (e) => {
+    budget = parseFloat(e.target.value) || 0;
+    localStorage.setItem('budget', budget);
+    renderBudget();
+    renderCharts();
+});
+
 document.getElementById('btn-export').addEventListener('click', () => {
     if (!expenses.length) {
         alert('No expenses to export.');
@@ -710,6 +821,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
 // ---------- init ----------
 document.getElementById('date').value = todayString();
 document.getElementById('income').value = income || '';
+document.getElementById('budget').value = budget || '';
 saveAndRender();
 </script>
 </body>
