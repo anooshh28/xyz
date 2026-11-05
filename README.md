@@ -1,4 +1,4 @@
-# Expense Tracker — Daily & Monthly
+# Personal Expenditure Tracking and Management
 A personal expense tracker that records daily spending by category and shows where the money actually goes — daily totals, monthly totals, savings against income, and each category's share of overall spending. All data is stored in the browser, so it works offline with no account and no server. 
 
 ## Features
